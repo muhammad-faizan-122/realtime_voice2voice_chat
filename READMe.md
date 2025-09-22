@@ -152,7 +152,7 @@ python main.py
 
 ## ✅ Tested On
 
-* OS: Ubuntu 20.04 / 22.04
+* OS: Ubuntu 24
 * Python: 3.11.13
 * Hardware: CPU-only (GPU support optional via Docker)
 
