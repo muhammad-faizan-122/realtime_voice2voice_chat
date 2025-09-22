@@ -1,0 +1,24 @@
+# ignore build directory
+build/
+
+# Ignore log files
+*.log
+
+# Ignore audio files
+*.wav
+
+# Ignore python cache files
+*__pycache__
+
+# LLM model
+*.gguf
+
+# TTS model
+*.onnx
+*.json
+
+# ignore translation model
+src/stt/WhisperLive/models/translation
+
+# ignore whisper model
+src/stt/WhisperLive/models/faster_whisper_tiny
