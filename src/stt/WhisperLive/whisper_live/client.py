@@ -1,5 +1,5 @@
-from src.llm.infer import get_llm_response_generator
-from src.tts.piper_.infer import get_tts_response_generator
+from src.llm.infer import LlamaGGUF
+from src.common.text_to_speech import TextToSpeechStreamer
 from src.common.logger import log
 import src.stt.WhisperLive.whisper_live.utils as utils
 import os
@@ -7,84 +7,12 @@ import shutil
 import wave
 import numpy as np
 import pyaudio
-import threading
 import json
 import websocket
 import uuid
 import time
 import av
-import sounddevice as sd
-
-
-def play_audio(audio_np, sample_rate=22050):
-    sd.play(audio_np, samplerate=sample_rate)
-    sd.wait()
-
-
-def play_audio_background(audio_np, sample_rate=22050):
-    thread = threading.Thread(target=play_audio, args=(audio_np, sample_rate))
-    thread.start()
-    return thread  # Return thread to allow tracking
-
-
-def extract_llm_response(chunk):
-    try:
-        llm_response = chunk["choices"][0]["delta"]["content"]
-        return llm_response
-    except Exception as e:
-        return None
-
-
-def user_query_to_speech(user):
-    try:
-        llm_generator = get_llm_response_generator(user)
-
-        # Iterate over the streaming output and print it.
-        batch_sz = 5
-        text_stream = []
-        last_thread = None
-
-        # getting llm response in streaming model
-        for chunk in llm_generator:
-            llm_response_token = extract_llm_response(chunk)
-            if not llm_response_token:
-                continue
-            text_stream.append(llm_response_token)
-
-            is_sentence_end = llm_response_token.strip().endswith((".", "!", "?"))
-            if not is_sentence_end:
-                continue
-
-            log.debug("LLM response text stream: ", text_stream)
-            audio_stream = get_tts_response_generator(" ".join(text_stream))
-
-            # Wait for previous thread to finish (if needed)
-            if last_thread and last_thread.is_alive():
-                last_thread.join()
-
-            last_thread = play_audio_background(audio_np=np.array(audio_stream))
-            # log.debug("after calling thread: ", last_thread.is_alive())
-            text_stream = []  # Reset for next batch
-
-        if len(text_stream):
-            # log.debug("text stream after exiting generator loop: ", text_stream)
-            audio_stream = get_tts_response_generator(" ".join(text_stream))
-
-            # Wait for previous audio to finish
-            if last_thread and last_thread.is_alive():
-                last_thread.join()
-
-            final_thread = play_audio_background(audio_stream)
-            final_thread.join()  # ✅ This ensures it finishes before program exits
-        else:
-            if last_thread:
-                last_thread.join()  # Ensure the last thread finishes
-
-        return "done"
-
-    except Exception as e:
-        print(f"Error in user_query_to_speech: {e}")
-        return "error"
+import threading
 
 
 class SharedState:
@@ -526,6 +454,7 @@ class TranscriptionTeeClient:
         except OSError as error:
             print(f"[WARN]: Unable to access microphone. {error}")
             self.stream = None
+        self.tts = TextToSpeechStreamer(llm=LlamaGGUF())
 
     def __call__(self, audio=None, rtsp_url=None, hls_url=None, save_file=None):
         """
@@ -858,7 +787,7 @@ class TranscriptionTeeClient:
                         user_msg = " ".join(SharedState.USER_MSG)
                         log.info(f"USER MSG: {user_msg}")
 
-                        ack = user_query_to_speech(user=user_msg)
+                        ack = self.tts.stream_and_play(user_msg)
                         log.info(f"TTS PIPELINE DONE...{ack}")
 
                         SharedState.IS_USER_MSG_COMPLETED = False

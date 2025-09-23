@@ -22,3 +22,6 @@ src/stt/WhisperLive/models/translation
 
 # ignore whisper model
 src/stt/WhisperLive/models/faster_whisper_tiny
+
+# transcript files
+*.srt
