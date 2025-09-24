@@ -1,7 +1,7 @@
-from src.stt.WhisperLive.whisper_live.client import VoiceAgent
+from src import Voice2Voice
 
 
-client = VoiceAgent(
+v2v_client = Voice2Voice(
     host="0.0.0.0",
     port=9090,
     lang="en",  # input language or transcription language
@@ -16,4 +16,4 @@ client = VoiceAgent(
 )
 
 
-client()
+v2v_client()

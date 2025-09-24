@@ -1,18 +1,18 @@
-from src.llm.infer import LlamaGGUF
 from src.common.text_to_speech import TextToSpeechStreamer
-from src.common.logger import log
 import src.stt.WhisperLive.whisper_live.utils as utils
+from src.llm.infer import LlamaGGUF
+from src.common.logger import log
 import os
 import shutil
 import wave
-import numpy as np
 import pyaudio
-import json
-import websocket
-import uuid
-import time
 import av
+import numpy as np
+import websocket
+import time
 import threading
+import json
+import uuid
 
 
 class SharedState:
@@ -248,9 +248,6 @@ class Client:
 
         """
         message = json.loads(message)
-        # log.debug(
-        #     f"Received message: {type(message)} | {message.keys()} | {message.get('message', '')}"
-        # )
 
         if (
             "message" in message.keys()
@@ -407,7 +404,7 @@ class Client:
             continue
 
 
-class TranscriptionTeeClient:
+class Voice2VoiceClient:
     """
     Client for handling audio recording, streaming, and transcription tasks via one or more
     WebSocket connections.
@@ -720,6 +717,11 @@ class TranscriptionTeeClient:
             self.write_output_recording(n_audio_file)
         self.write_all_clients_srt()
 
+    def reset_shared_state(self):
+        SharedState.IS_RECV_LAST_SEG = False
+        SharedState.IS_USER_MSG_COMPLETED = False
+        SharedState.USER_MSG = []
+
     def record(self):
         """
         Record audio data from the input stream and save it to a WAV file.
@@ -790,9 +792,7 @@ class TranscriptionTeeClient:
                         ack = self.tts.stream_and_play(user_msg)
                         log.info(f"TTS PIPELINE DONE...{ack}")
 
-                        SharedState.IS_USER_MSG_COMPLETED = False
-                        SharedState.USER_MSG = []
-                        SharedState.IS_RECV_LAST_SEG = False
+                        self.reset_shared_state()
                         continue
 
                 audio_array = self.bytes_to_float_array(data)
@@ -884,7 +884,7 @@ class TranscriptionTeeClient:
         return raw_data.astype(np.float32) / 32768.0
 
 
-class VoiceAgent(TranscriptionTeeClient):
+class Voice2Voice(Voice2VoiceClient):
     """
     Client for handling audio transcription tasks via a single WebSocket connection.
 
@@ -981,7 +981,7 @@ class VoiceAgent(TranscriptionTeeClient):
             raise ValueError(
                 f"Please provide a valid `translation_srt_file_path`: {translation_srt_file_path}. The file extension should be `.srt`."
             )
-        TranscriptionTeeClient.__init__(
+        Voice2VoiceClient.__init__(
             self,
             [self.client],
             save_output_recording=save_output_recording,
