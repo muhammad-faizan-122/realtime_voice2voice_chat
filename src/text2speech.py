@@ -1,13 +1,14 @@
 from src.common.logger import log
-from src.tts.piper_.infer import get_tts_response_generator
 from src.tts.piper_.utils import play_audio_background
-from src.llm.infer import LlamaGGUF
+from src.llm.base import LLM
+from src.tts.base import TTSBase
 import numpy as np
 
 
 class TextToSpeechStreamer:
-    def __init__(self, llm: LlamaGGUF):
+    def __init__(self, llm: LLM, tts: TTSBase):
         self.llm = llm
+        self.tts = tts
         self.audio_thread = None
         self.text_stream = []
 
@@ -19,7 +20,7 @@ class TextToSpeechStreamer:
             self.audio_thread.join()
 
     def play_audio(self, text_chunk: str, final: bool = False):
-        audio_stream = get_tts_response_generator(text_chunk)
+        audio_stream = self.tts.get_audio_streams(text_chunk)
         self.wait_for_previous_audio()
 
         log.debug(f"{'Final' if final else 'Intermediate'} TTS: {text_chunk}")
@@ -28,7 +29,8 @@ class TextToSpeechStreamer:
         if final:
             self.audio_thread.join()
 
-    def stream_and_play(self, user_query: str):
+    def execute(self, user_query: str):
+        """Generate LLM response and stream TTS audio."""
         try:
             generator = self.llm.get_llm_generator(user_query)
             if not generator:

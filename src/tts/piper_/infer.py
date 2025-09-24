@@ -1,23 +1,40 @@
 from piper import PiperVoice, SynthesisConfig
+from src.tts.base import TTSBase
+from src.common.utils import measure_time
+from src.common.logger import log
+from . import config
 
 
-voice = PiperVoice.load("src/tts/piper_/model/en_US-lessac-medium.onnx")
-syn_config = SynthesisConfig(
-    volume=1.0,  # half as loud
-    length_scale=1.0,  # twice as slow
-    noise_scale=1.0,  # more audio variation
-    noise_w_scale=1.0,  # more speaking variation
-    normalize_audio=False,  # use raw audio from voice
-)
+class PiperTTS(TTSBase):
+    _instance = None
+    _model = None
 
+    # singleton pattern to load model only once
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None and cls._model is None:
+            cls._instance = super(PiperTTS, cls).__new__(cls)
+            cls.load_model()
+        return cls._instance
 
-def get_tts_response_generator(text):
-    stream_chunks = []
-    for chunk_i, audio_chunk in enumerate(
-        voice.synthesize(text, syn_config=syn_config)
-    ):
-        # print(audio_chunk.sample_rate, audio_chunk.audio_float_array)
-        # print(audio_chunk)
-        stream_chunks.extend(audio_chunk.audio_float_array.tolist())
-        # print(len(audio_chunk.audio_float_array), type(audio_chunk.audio_float_array))
-    return stream_chunks
+    @classmethod
+    def load_model(cls):
+        with measure_time("Loaded TTS model", log):
+            cls._model = PiperVoice.load(config.MODEL_PATH)
+
+    def __init__(self):
+        super().__init__()
+        self.syn_config = SynthesisConfig(
+            volume=config.VOLUME,
+            length_scale=config.LENGTH_SCALE,  # twice as slow
+            noise_scale=config.NOISE_SCALE,  # more audio variation
+            noise_w_scale=config.NOISE_W_SCALE,  # more speaking variation
+            normalize_audio=config.NORMALIZE_AUDIO,  # use raw audio from voice
+        )
+
+    def get_audio_streams(self, text):
+        stream_chunks = []
+        audio_generator = self._model.synthesize(text=text, syn_config=self.syn_config)
+        for stream_chunk in audio_generator:
+            # log.debug(stream_chunk.sample_rate)
+            stream_chunks.extend(stream_chunk.audio_float_array.tolist())
+        return stream_chunks

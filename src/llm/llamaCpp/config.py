@@ -1,6 +1,6 @@
 CTX_LEN = 2048
 GPU_LAYER = -1  # -1 FOR CPU
-MODEL_PATH = "src/llm/model/Llama-3.2-1B-Instruct-IQ3_M.gguf"
+MODEL_PATH = "src/llm/llamaCpp/model/Llama-3.2-1B-Instruct-IQ3_M.gguf"
 TEMPERATURE = 0.1
 MAX_TOKENS = 100
 ALLOW_STREAM = True

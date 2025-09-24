@@ -1,15 +1,8 @@
 from llama_cpp import Llama
 from src.common.logger import log
 from src.common.utils import measure_time
-from src.llm import config
-
-
-class LLM:
-    def __init__(self):
-        pass
-
-    def get_llm_stream_out():
-        return
+from src.llm.llamaCpp import config
+from src.llm.base import LLM
 
 
 class LlamaGGUF(LLM):

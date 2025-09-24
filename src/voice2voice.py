@@ -1,6 +1,7 @@
-from src.common.text_to_speech import TextToSpeechStreamer
+from src.text2speech import TextToSpeechStreamer
 import src.stt.WhisperLive.whisper_live.utils as utils
-from src.llm.infer import LlamaGGUF
+from src.llm.llamaCpp.infer import LlamaGGUF
+from src.tts.piper_.infer import PiperTTS
 from src.common.logger import log
 import os
 import shutil
@@ -451,7 +452,7 @@ class Voice2VoiceClient:
         except OSError as error:
             print(f"[WARN]: Unable to access microphone. {error}")
             self.stream = None
-        self.tts = TextToSpeechStreamer(llm=LlamaGGUF())
+        self.text2speech = TextToSpeechStreamer(llm=LlamaGGUF(), tts=PiperTTS())
 
     def __call__(self, audio=None, rtsp_url=None, hls_url=None, save_file=None):
         """
@@ -522,10 +523,10 @@ class Voice2VoiceClient:
         """
         energy = np.sqrt(np.mean(audio_array**2))  # RMS energy
         if energy < threshold:
-            log.info(f"audible energy: {energy}")
+            log.info(f"User is Paused, waiting for response: {energy}")
             return True
         else:
-            log.info(f"inaudible energy: {energy}")
+            log.info(f"User is speaking: {energy}")
             return False
 
     def play_file(self, filename):
@@ -772,13 +773,11 @@ class Voice2VoiceClient:
                     window_bytes = b""  # Reset buffer
 
                     if self.is_user_pause(
-                        audio_array=audio_array,
-                        threshold=ENERGY_THRESHOLD,
+                        audio_array=audio_array, threshold=ENERGY_THRESHOLD
                     ):
 
                         # set FLAG OF USER MSG ENDED
                         self.multicast_packet(packet=b"USER_MSG_ENDED")
-
                         log.info("Waiting complete USER MSG")
 
                         # wait all user message processed STT done
@@ -789,7 +788,7 @@ class Voice2VoiceClient:
                         user_msg = " ".join(SharedState.USER_MSG)
                         log.info(f"USER MSG: {user_msg}")
 
-                        ack = self.tts.stream_and_play(user_msg)
+                        ack = self.text2speech.execute(user_msg)
                         log.info(f"TTS PIPELINE DONE...{ack}")
 
                         self.reset_shared_state()
