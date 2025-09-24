@@ -40,7 +40,7 @@ wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Ll
 Move it to the correct directory:
 
 ```bash
-mv Llama-3.2-1B-Instruct-IQ3_M.gguf src/stt/WhisperLive/models/
+mv Llama-3.2-1B-Instruct-IQ3_M.gguf src/llm/llamaCpp/model
 ```
 
 ---
