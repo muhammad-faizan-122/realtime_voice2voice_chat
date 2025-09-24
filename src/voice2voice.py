@@ -14,6 +14,7 @@ import time
 import threading
 import json
 import uuid
+import gradio as gr
 
 
 class SharedState:
@@ -929,7 +930,7 @@ class Voice2Voice(Voice2VoiceClient):
         port,
         lang=None,
         translate=False,
-        model="small",
+        model="tiny",
         use_vad=True,
         use_wss=False,
         save_output_recording=False,
@@ -987,3 +988,79 @@ class Voice2Voice(Voice2VoiceClient):
             output_recording_filename=output_recording_filename,
             mute_audio_playback=mute_audio_playback,
         )
+
+
+voice2voice = None
+recording_thread = None
+stop_flag = False
+
+
+def start_chatting(host, port, language):
+
+    if language.lower() not in ["en", "english"]:
+        return "❌ Only English is supported currently."
+
+    global voice2voice, recording_thread, stop_flag
+
+    # Reset global state before starting
+    SharedState.USER_MSG = []
+    SharedState.IS_USER_MSG_COMPLETED = False
+    SharedState.IS_RECV_LAST_SEG = False
+    stop_flag = False
+
+    def run_recording():
+        global voice2voice
+        try:
+            voice2voice = Voice2Voice(
+                host=host,
+                port=int(port),
+                lang=language if language else "en",
+            )
+            voice2voice()
+        except Exception as e:
+            print(f"[ERROR] Failed to start Voice2Voice: {e}")
+
+    recording_thread = threading.Thread(target=run_recording)
+    recording_thread.start()
+
+    return "🎤 Recording started!"
+
+
+def get_latest_transcript():
+    log.debug(f"Getting latest transcript: {SharedState.USER_MSG}")
+    return " ".join(SharedState.USER_MSG)
+
+
+def stop_chatting():
+    global voice2voice, stop_flag
+    if voice2voice:
+        voice2voice.close_all_clients()
+    stop_flag = True
+    return "🛑 Recording stopped."
+
+
+def run_app():
+    with gr.Blocks() as demo:
+        gr.Markdown("## 🎙️ Real-Time Voice-to-Voice Chat")
+        with gr.Row():
+            host = gr.Textbox(label="WebSocket Host", value="localhost")
+            port = gr.Textbox(label="Port", value="9090")
+            language = gr.Textbox(label="Only English", value="en")
+
+        with gr.Row():
+            start_btn = gr.Button("▶️ Start Chat")
+            stop_btn = gr.Button("⏹️ Stop Chat")
+
+        transcript_box = gr.Textbox(
+            label="Live Transcript", lines=5, value=" ".join(SharedState.USER_MSG)
+        )
+
+        start_btn.click(
+            start_chatting,
+            inputs=[host, port, language],
+            outputs=gr.Textbox(label="Status"),
+        )
+        log.debug(f"transcript text app: {' '.join(SharedState.USER_MSG)}")
+
+        stop_btn.click(stop_chatting, outputs=gr.Textbox(label="Status"))
+    demo.launch()
