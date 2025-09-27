@@ -39,6 +39,7 @@ class ClientManager:
             websocket: The websocket associated with the client to add.
             client: The client object to be added and tracked.
         """
+        logging.debug(f"websocket detail\ntype:{type(websocket)}\nlook:{websocket}")
         self.clients[websocket] = client
         self.start_times[websocket] = time.time()
 
@@ -277,6 +278,7 @@ class TranscriptionServer:
                         f"Using custom model {faster_whisper_custom_model_path}"
                     )
                     options["model"] = faster_whisper_custom_model_path
+
                 client = ServeClientFasterWhisper(
                     websocket,
                     language=options["language"],
@@ -364,6 +366,7 @@ class TranscriptionServer:
 
             if self.backend.is_tensorrt():
                 self.vad_detector = VoiceActivityDetector(frame_rate=self.RATE)
+
             self.initialize_client(
                 websocket,
                 options,
@@ -525,7 +528,7 @@ class TranscriptionServer:
             )
 
         with serve(
-            functools.partial(
+            handler=functools.partial(
                 self.recv_audio,
                 backend=BackendType(backend),
                 faster_whisper_custom_model_path=faster_whisper_custom_model_path,
@@ -534,8 +537,8 @@ class TranscriptionServer:
                 translation_model_path=translation_model_path,
                 trt_py_session=trt_py_session,
             ),
-            host,
-            port,
+            host=host,
+            port=port,
         ) as server:
             server.serve_forever()
 

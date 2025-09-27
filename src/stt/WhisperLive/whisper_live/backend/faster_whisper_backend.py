@@ -102,13 +102,13 @@ class ServeClientFasterWhisper(ServeClientBase):
         logging.info(f"Using Device={device} with precision {self.compute_type}")
 
         try:
-            print("single model", single_model)
+            logging.info(f"single model: {single_model}")
             if single_model:
                 if ServeClientFasterWhisper.SINGLE_MODEL is None:
-                    print("serve client model single model")
+                    logging.info("serve client model single model")
                     self.create_model(device)
                     ServeClientFasterWhisper.SINGLE_MODEL = self.transcriber
-                    print("assigned transcriber to single model")
+                    logging.info("assigned transcriber to single model")
                 else:
                     self.transcriber = ServeClientFasterWhisper.SINGLE_MODEL
             else:
@@ -149,7 +149,7 @@ class ServeClientFasterWhisper(ServeClientBase):
         then it is automatically converted to ctranslate2(faster_whisper) format.
         """
         model_ref = self.model_size_or_path
-        print("model ref:", model_ref)
+        logging.info("model ref:", model_ref)
         if model_ref in self.model_sizes:
             model_to_load = model_ref
         else:
@@ -193,7 +193,7 @@ class ServeClientFasterWhisper(ServeClientBase):
             compute_type=self.compute_type,
             local_files_only=False,
         )
-        print("transcriber: ", self.transcriber)
+        logging.info("transcriber: ", self.transcriber)
 
     def set_language(self, info):
         """
@@ -238,6 +238,7 @@ class ServeClientFasterWhisper(ServeClientBase):
         """
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.acquire()
+
         result, info = self.transcriber.transcribe(
             input_sample,
             initial_prompt=self.initial_prompt,
@@ -251,6 +252,7 @@ class ServeClientFasterWhisper(ServeClientBase):
 
         if self.language is None and info is not None:
             self.set_language(info)
+
         return result
 
     def handle_transcription_output(self, result, duration):
@@ -261,6 +263,7 @@ class ServeClientFasterWhisper(ServeClientBase):
             result (str): The result from whisper inference i.e. the list of segments.
             duration (float): Duration of the transcribed audio chunk.
         """
+        logging.debug(f"Transcription results of audio duration {duration}: {result}")
         segments = []
         if len(result):
             self.t_start = None

@@ -154,12 +154,18 @@ class ServeClientBase(object):
             # check timestamp offset(should be >= self.frame_offset)
             # this basically means that there is no speech as timestamp offset hasnt updated
             # and is less than frame_offset
+
+            # TODO: unclear following logic
             if self.timestamp_offset < self.frames_offset:
                 self.timestamp_offset = self.frames_offset
+
         if self.frames_np is None:
             self.frames_np = frame_np.copy()
+
+        # if frame_np < 45 sec just keep concatenating
         else:
             self.frames_np = np.concatenate((self.frames_np, frame_np), axis=0)
+
         self.lock.release()
 
     def clip_audio_if_no_valid_segment(self):
